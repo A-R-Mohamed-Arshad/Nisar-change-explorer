@@ -7,28 +7,43 @@
 ## 1. General Principles
 
 ### 1.1 Error Format
-All endpoints return errors in the following single consistent structure:
+All endpoints return errors in a single consistent structure across the backend:
 ```json
 {
   "error": {
-    "code": "404",
-    "message": "Job sample-id not found"
+    "code": "AREA_TOO_LARGE",
+    "message": "Requested area (32.0 km x 28.0 km) exceeds maximum limit of 25.0 km x 25.0 km. Please select a smaller bounding box."
   }
 }
 ```
 
-### 1.2 Job Status Values
+Standard error codes:
+- `AREA_TOO_LARGE`: Bounding box exceeds maximum allowed dimensions (`MAX_AREA_KM`).
+- `INSUFFICIENT_DATA`: Fewer than 2 usable satellite passes available in the date range.
+- `NO_DATA`: No satellite passes found for the target area.
+- `UPSTREAM_FAILURE`: External API call (NASA CMR, ASF, or science algorithm) failed or timed out.
+- `INVALID_REQUEST`: Missing, malformed, or out-of-range request parameters.
+- `404`: Requested job or result record not found.
+
+### 1.2 Job Lifecycle & Status Values
 Job lifecycles transition strictly through the following status values:
 - `queued`
 - `running`
 - `complete`
 - `failed`
 
-### 1.3 Mode Field
+### 1.3 Step Messages
+During execution, `GET /jobs/{job_id}` reports progress through standardized step messages in this exact order:
+1. `"Finding passes"`
+2. `"Fetching data"`
+3. `"Comparing dates"`
+4. `"Saving result"`
+
+### 1.4 Mode Field
 Every data response indicates its provenance via the `mode` field:
-- `sample` (mock / fallback test data)
-- `saved` (cached / precomputed dataset)
-- `live` (queried from active NASA/ASF APIs or freshly computed)
+- `sample`: mock / fallback synthetic dataset.
+- `saved`: cached / precomputed output (instantly served from cache).
+- `live`: freshly queried from active NASA/ASF APIs or executed by the science pipeline.
 
 *Rule: Never present sample data as live.*
 
@@ -54,28 +69,42 @@ Every data response indicates its provenance via the `mode` field:
 - **Method:** `POST`
 - **Path:** `/availability`
 - **Request Fields:**
-  - `area` (object, GeoJSON geometry, optional)
-  - `date_range` (object, e.g. `{"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}`, optional)
+  - `area` (object, required: bounding box `{west, south, east, north}` in degrees)
+  - `start_date` (string, optional: `YYYY-MM-DD`, default: "2024-10-01")
+  - `end_date` (string, optional: `YYYY-MM-DD`, default: "2024-10-15")
 - **Response Fields:**
   - `status` (string, e.g. "complete")
   - `mode` (string: "live", "saved", or "sample")
   - `passes` (array of objects):
     - `granule_id` (string)
-    - `date` (string)
-    - `orbit_direction` (string)
-    - `quality_level` (string)
+    - `date` (string, `YYYY-MM-DD`)
+    - `track` (integer or null, orbit path number)
+    - `direction` (string, "Ascending" or "Descending")
+    - `quality_level` (string, e.g. "BETA", "PROVISIONAL", "VALIDATED", or "nominal")
+  - `usable_pass_count` (integer, count of usable passes)
+  - `reason` (string, optional explanation if fell back to sample mode)
 ```json
 {
   "status": "complete",
   "mode": "sample",
+  "reason": "asf_search does not currently define a NISAR platform constant; using sample passes.",
   "passes": [
     {
       "granule_id": "NISAR_L2_PR_GCOV_001_005_A_123_20241001T000000_20241001T000030_M01_F_J_001.h5",
       "date": "2024-10-01",
-      "orbit_direction": "Ascending",
+      "track": 123,
+      "direction": "Ascending",
+      "quality_level": "nominal"
+    },
+    {
+      "granule_id": "NISAR_L2_PR_GCOV_001_005_A_123_20241015T000000_20241015T000030_M01_F_J_001.h5",
+      "date": "2024-10-15",
+      "track": 123,
+      "direction": "Ascending",
       "quality_level": "nominal"
     }
-  ]
+  ],
+  "usable_pass_count": 2
 }
 ```
 
@@ -85,14 +114,18 @@ Every data response indicates its provenance via the `mode` field:
 - **Method:** `POST`
 - **Path:** `/analyze`
 - **Request Fields:**
-  - `area` (object, GeoJSON geometry)
-  - `dates` (object with `pre_event` and `post_event` strings)
-  - `analysis_type` (string, e.g. "flood_wetland")
+  - `area` (object, required: bounding box `{west, south, east, north}`)
+  - `start_date` (string: `YYYY-MM-DD`)
+  - `end_date` (string: `YYYY-MM-DD`)
+  - `dates` (object, optional alternative: `{"pre_event": "YYYY-MM-DD", "post_event": "YYYY-MM-DD"}`)
+  - `question` (string, optional: type of analysis, default: "flood_wetland")
 - **Response Fields:**
   - `job_id` (string, UUID)
+  - `cached` (boolean, true if immediately served from cache)
 ```json
 {
-  "job_id": "550e8400-e29b-41d4-a716-446655440000"
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "cached": false
 }
 ```
 
@@ -105,12 +138,13 @@ Every data response indicates its provenance via the `mode` field:
 - **Response Fields:**
   - `job_id` (string)
   - `status` (string: "queued", "running", "complete", "failed")
-  - `step` (string, description of current progress step)
+  - `step` (string: current progress message)
+  - `error` (object, optional: `{code, message}` present if failed)
 ```json
 {
   "job_id": "550e8400-e29b-41d4-a716-446655440000",
   "status": "running",
-  "step": "Co-registering NISAR L2 GCOV rasters"
+  "step": "Comparing dates"
 }
 ```
 
@@ -121,17 +155,18 @@ Every data response indicates its provenance via the `mode` field:
 - **Path:** `/results/{job_id}`
 - **Request Fields:** Path parameter `job_id`
 - **Response Fields:**
-  - `status` (string: "queued", "running", "complete", "failed")
+  - `status` (string: "complete", "failed")
   - `mode` (string: "live", "saved", or "sample")
-  - `area` (object, GeoJSON geometry of the area analyzed)
-  - `dates_used` (object, pre- and post-event dates used in computation)
-  - `files_used` (array of satellite granules used, with `quality_level`)
-  - `result_map_url` (string, tile link or raster map overlay URL)
-  - `area_changed_by_category` (object, area changed per category in sq km)
-  - `confidence` (number, score from 0.0 to 1.0)
-  - `confidence_reason` (string, explanation of score)
-  - `limits` (string, sensor or algorithm caveats, e.g., layover/shadow)
-  - `source_type` (string, sensor and product level)
+  - `area` (object, bounding box `{west, south, east, north}`)
+  - `dates_used` (object with `pre_event` and `post_event`)
+  - `files_used` (array of satellite granules used with `granule_id` and `quality_level`)
+  - `result_map_url` (string, URL serving the overlay image, e.g. `/static/results/placeholder_overlay.png`)
+  - `result_map_bbox` (object, bounding box `{west, south, east, north}` needed for map alignment)
+  - `area_changed_by_category` (object, sq km changed per category)
+  - `confidence` (number: 0.0 to 1.0)
+  - `confidence_reason` (string, justification for confidence score)
+  - `limits` (string, scientific caveats or radar distortions)
+  - `source_type` (string, product type)
   - `_note` (string, optional developer/placeholder notes)
 
 ```json
@@ -140,16 +175,10 @@ Every data response indicates its provenance via the `mode` field:
   "status": "complete",
   "mode": "sample",
   "area": {
-    "type": "Polygon",
-    "coordinates": [
-      [
-        [79.80, 11.90],
-        [80.05, 11.90],
-        [80.05, 12.15],
-        [79.80, 12.15],
-        [79.80, 11.90]
-      ]
-    ]
+    "west": 79.80,
+    "south": 11.90,
+    "east": 80.00,
+    "north": 12.10
   },
   "dates_used": {
     "pre_event": "2024-10-01",
@@ -165,7 +194,13 @@ Every data response indicates its provenance via the `mode` field:
       "quality_level": "nominal"
     }
   ],
-  "result_map_url": "https://example.com/tiles/sample-nisar-change/{z}/{x}/{y}.png",
+  "result_map_url": "/static/results/placeholder_overlay.png",
+  "result_map_bbox": {
+    "west": 79.80,
+    "south": 11.90,
+    "east": 80.00,
+    "north": 12.10
+  },
   "area_changed_by_category": {
     "water_increase_sqkm": 14.25,
     "wetland_loss_sqkm": 2.10,
@@ -178,3 +213,9 @@ Every data response indicates its provenance via the `mode` field:
 }
 ```
 
+---
+
+### 2.6 Static Map Overlays
+- **Method:** `GET`
+- **Path:** `/static/results/{filename}`
+- Returns PNG raster overlay image directly from `CACHE_DIR/maps/`.
