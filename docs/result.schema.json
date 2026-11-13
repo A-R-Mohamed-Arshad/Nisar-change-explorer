@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "DatesUsed": {
+      "properties": {
+        "pre_event": {
+          "title": "Pre Event",
+          "type": "string"
+        },
+        "post_event": {
+          "title": "Post Event",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pre_event",
+        "post_event"
+      ],
+      "title": "DatesUsed",
+      "type": "object"
+    },
+    "GranuleUsed": {
+      "properties": {
+        "granule_id": {
+          "title": "Granule Id",
+          "type": "string"
+        },
+        "quality_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "nominal",
+          "title": "Quality Level"
+        }
+      },
+      "required": [
+        "granule_id"
+      ],
+      "title": "GranuleUsed",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "status": {
+      "default": "complete",
+      "enum": [
+        "complete",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "mode": {
+      "default": "sample",
+      "enum": [
+        "live",
+        "saved",
+        "sample"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "area": {
+      "description": "Bounding box or GeoJSON geometry evaluated",
+      "title": "Area"
+    },
+    "dates_used": {
+      "$ref": "#/$defs/DatesUsed",
+      "description": "Pre- and post-event observation dates used"
+    },
+    "files_used": {
+      "description": "Satellite files used in analysis",
+      "items": {
+        "$ref": "#/$defs/GranuleUsed"
+      },
+      "title": "Files Used",
+      "type": "array"
+    },
+    "result_map_url": {
+      "description": "URL to rendered change overlay image",
+      "title": "Result Map Url",
+      "type": "string"
+    },
+    "result_map_bbox": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Bounding box alignment coordinates for map overlay",
+      "title": "Result Map Bbox"
+    },
+    "area_changed_by_category": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "description": "Change extent in sq km per category",
+      "title": "Area Changed By Category",
+      "type": "object"
+    },
+    "confidence": {
+      "description": "Confidence score from 0.0 to 1.0",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "confidence_reason": {
+      "description": "Explanation supporting confidence score",
+      "title": "Confidence Reason",
+      "type": "string"
+    },
+    "limits": {
+      "description": "Scientific caveats, radar distortions, and limitations",
+      "title": "Limits",
+      "type": "string"
+    },
+    "source_type": {
+      "description": "Sensor and processing level specification",
+      "title": "Source Type",
+      "type": "string"
+    },
+    "_note": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Developer or mock notes",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "area",
+    "dates_used",
+    "result_map_url",
+    "confidence",
+    "confidence_reason",
+    "limits",
+    "source_type"
+  ],
+  "title": "ResultResponse",
+  "type": "object"
+}
