@@ -1,0 +1,42 @@
+{
+  "_note": "This is a placeholder sample result for development and offline testing. Real analysis is not yet connected.",
+  "status": "complete",
+  "mode": "sample",
+  "area": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [79.80, 11.90],
+        [80.05, 11.90],
+        [80.05, 12.15],
+        [79.80, 12.15],
+        [79.80, 11.90]
+      ]
+    ]
+  },
+  "dates_used": {
+    "pre_event": "2024-10-01",
+    "post_event": "2024-10-15"
+  },
+  "files_used": [
+    {
+      "granule_id": "NISAR_L2_PR_GCOV_001_005_A_123_20241001T000000_20241001T000030_M01_F_J_001.h5",
+      "quality_level": "nominal"
+    },
+    {
+      "granule_id": "NISAR_L2_PR_GCOV_001_005_A_123_20241015T000000_20241015T000030_M01_F_J_001.h5",
+      "quality_level": "nominal"
+    }
+  ],
+  "result_map_url": "https://example.com/tiles/sample-nisar-change/{z}/{x}/{y}.png",
+  "area_changed_by_category": {
+    "water_increase_sqkm": 14.25,
+    "wetland_loss_sqkm": 2.10,
+    "unclassified_change_sqkm": 0.85
+  },
+  "confidence": 0.88,
+  "confidence_reason": "High temporal coherence and optimal baseline angle in sample mock calculation.",
+  "limits": "Sample simulation only. Cloud cover does not affect radar, but steep topography may introduce layover distortion.",
+  "source_type": "NISAR L2 GCOV (Simulated Sample)"
+}
+
