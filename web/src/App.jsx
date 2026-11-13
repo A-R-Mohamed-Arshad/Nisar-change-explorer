@@ -3,6 +3,7 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { GIBS_CONFIG, getGibsTileUrl } from './config'
 import { getAvailability } from './api'
+import DataModeBadge from './components/DataModeBadge'
 
 export default function App() {
   const mapContainer = useRef(null)
@@ -12,7 +13,7 @@ export default function App() {
 
   useEffect(() => {
     // Initial test call to API to establish status/mode
-    getAvailability({ type: 'Point', coordinates: [80.0, 12.0] })
+    getAvailability({ west: 79.8, south: 11.9, east: 80.0, north: 12.1 })
       .then((data) => {
         if (data?.mode) {
           setDataMode(data.mode)
@@ -69,7 +70,7 @@ export default function App() {
           }
         ]
       },
-      center: [79.8, 12.0], // Default center around sample coordinates
+      center: [79.8, 12.0],
       zoom: 6
     })
 
@@ -113,22 +114,10 @@ export default function App() {
         boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
         fontFamily: 'sans-serif'
       }}>
-        <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          NISAR Change Explorer
-          {dataMode === 'sample' && (
-            <span style={{
-              backgroundColor: '#e53e3e',
-              color: '#ffffff',
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '2px 8px',
-              borderRadius: '9999px',
-              letterSpacing: '0.5px'
-            }}>
-              SAMPLE DATA
-            </span>
-          )}
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <h2 style={{ margin: 0, fontSize: '18px' }}>NISAR Change Explorer</h2>
+          <DataModeBadge mode={dataMode} />
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '6px' }}>
@@ -149,4 +138,3 @@ export default function App() {
     </div>
   )
 }
-
