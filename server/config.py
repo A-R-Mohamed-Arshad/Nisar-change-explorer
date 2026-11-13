@@ -36,6 +36,9 @@ JOBS_STORAGE_FILE = CACHE_DIR / "jobs.json"
 # Science and Validation parameters
 MAX_AREA_KM = float(os.getenv("MAX_AREA_KM", "25"))
 
+# Simulation parameters (e.g. realistic progress pacing for UI testing)
+SIMULATE_DELAY_SECONDS = float(os.getenv("SIMULATE_DELAY_SECONDS", "0"))
+
 # NASA / NISAR Dataset Constants & Collection Identifiers
 # TODO: Confirm official NISAR CMR collection short names and concept IDs once publicly assigned
 # e.g., 'NISAR_L2_PR_GCOV', 'NISAR_L1_PR_RSLC', etc.

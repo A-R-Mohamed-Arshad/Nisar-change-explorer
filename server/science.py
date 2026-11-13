@@ -1,7 +1,8 @@
 import json
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-from server.config import BASE_DIR
+from server.config import BASE_DIR, SIMULATE_DELAY_SECONDS
 
 SAMPLE_RESULT_PATH = BASE_DIR / "data" / "sample" / "sample-result.json"
 
@@ -28,24 +29,6 @@ def _load_sample_json() -> Dict[str, Any]:
 def find_passes(area: Dict[str, float], start_date: str, end_date: str) -> List[Dict[str, Any]]:
     """
     Availability check stub for NISAR passes over a bounding box.
-
-    Args:
-        area: Bounding box dictionary with keys: 'west', 'south', 'east', 'north'.
-        start_date: Start date string (YYYY-MM-DD).
-        end_date: End date string (YYYY-MM-DD).
-
-    Returns:
-        List of dicts representing passes:
-        [
-            {
-                "granule_id": str,
-                "date": str,
-                "track": Optional[int],
-                "direction": str,
-                "quality_level": str  # BETA, PROVISIONAL, VALIDATED, or nominal
-            },
-            ...
-        ]
     """
     return [
         {
@@ -86,27 +69,19 @@ def run_analysis(
                     2. "Fetching data"
                     3. "Comparing dates"
                     4. "Saving result"
-
-    OUTPUT CONTRACT (MUST MATCH docs/api-contract.md):
-        Returns a dict with:
-        - status: 'complete' | 'failed'
-        - mode: 'sample' | 'saved' | 'live'
-        - area: Dict containing bounding box or GeoJSON geometry
-        - dates_used: Dict with 'pre_event' and 'post_event' strings
-        - files_used: List of Dicts with 'granule_id' and 'quality_level'
-        - result_map_url: str, URL pointing to static raster overlay (/static/results/...)
-        - result_map_bbox: Dict with 'west', 'south', 'east', 'north'
-        - area_changed_by_category: Dict of category names to sq km float
-        - confidence: float (0.0 to 1.0)
-        - confidence_reason: str
-        - limits: str
-        - source_type: str
     """
-    if progress:
-        progress("Finding passes")
-        progress("Fetching data")
-        progress("Comparing dates")
-        progress("Saving result")
+    steps = [
+        "Finding passes",
+        "Fetching data",
+        "Comparing dates",
+        "Saving result"
+    ]
+
+    for step in steps:
+        if progress:
+            progress(step)
+        if SIMULATE_DELAY_SECONDS > 0:
+            time.sleep(SIMULATE_DELAY_SECONDS)
 
     sample = _load_sample_json()
     # Inject requested area and dates into the sample output
